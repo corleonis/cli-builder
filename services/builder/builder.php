@@ -39,9 +39,6 @@ class JBuilder extends JCli {
     private $zipFiles = array();
     
     public function execute() {
-        //$this->out('  _       __      .__       |   _  | ' );
-        //$this->out( ' /_| |   |__ \_/  [__) _  _.|_/(_  | ' );
-        //$this->out( '/  | |__ |__ / \  |  \(_)(_.| \ _) * ' );exit;
         
         $this->out('Hello. What do you want to build today: 1 - Component; 2 - Plugin; 3 - Module');
         $choice = $this->in();
