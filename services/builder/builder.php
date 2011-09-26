@@ -40,7 +40,7 @@ class JBuilder extends JCli {
     
     public function execute() {
         
-        $this->out('Hello. What do you want to build today: 1 - Component; 2 - Plugin; 3 - Module');
+        $this->out('Hello. What do you want to build today:'."\n".'1 - Component; 2 - Plugin; 3 - Module');
         $choice = $this->in();
         
         switch($choice) {
@@ -228,18 +228,6 @@ class JBuilder extends JCli {
         return $result;
     }
     
-}
-
-function pr($data, $exit = false) {
-	if(is_bool($data) || empty($data)) {
-		$data = var_export($data, true);
-	}
-	
-	print_r($data);
-	
-	if($exit) {
-		exit;
-	}
 }
  
 JCli::getInstance('JBuilder')->execute();
