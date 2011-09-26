@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension
+	type="module"
+	version="1.7"
+	client="site"
+	method="upgrade">
+	<name></name>
+	<author></author>
+	<creationDate></creationDate>
+	<copyright></copyright>
+	<license></license>
+	<authorEmail></authorEmail>
+	<authorUrl></authorUrl>
+	<version></version>
+	<description></description>
+	<files>
+		<filename module="mod_default">mod_default.php</filename>
+		<folder>tmpl</folder>
+        <folder>fields</folder>
+		<filename>helper.php</filename>
+		<filename>index.html</filename>
+		<filename>mod_banners.xml</filename>
+	</files>
+	<languages>
+		<language tag="en-GB">en-GB.mod_default.ini</language>
+		<language tag="en-GB">en-GB.mod_default.sys.ini</language>
+	</languages>
+	<help key="" />
+	<config>
+		<fields name="params">
+			<fieldset name="basic" addfieldpath="/modules/com_default/fields">
+			</fieldset>
+		</fields>
+	</config>
+</extension>

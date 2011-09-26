@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<extension type="module" version="1.7" client="site" method="upgrade">
+  <name>mod_test</name>
+  <author>&#xD;</author>
+  <creationDate>&#xD;</creationDate>
+  <copyright>&#xD;</copyright>
+  <license>&#xD;</license>
+  <authorEmail>&#xD;</authorEmail>
+  <authorUrl>&#xD;</authorUrl>
+  <version>&#xD;</version>
+  <description>&#xD;</description>
+  <files>
+    <filename module="mod_test.php">mod_test.php</filename>
+    <folder>tmpl</folder>
+    <folder>fields</folder>
+    <filename>helper.php</filename>
+    <filename>index.html</filename>
+    <filename>mod_test.xml</filename>
+  </files>
+  <languages>
+    <language tag="en-GB">en-GB.mod_test.ini</language>
+    <language tag="en-GB">en-GB.mod_test.sys.ini</language>
+  </languages>
+  <help key="&#13;"/>
+  <config>
+    <fields name="params">
+      <fieldset name="basic" addfieldpath="/modules/mod_test/fields"/>
+    </fields>
+  </config>
+</extension>
