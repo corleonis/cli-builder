@@ -1,12 +1,5 @@
-<?php
-define( '_JEXEC', 1 );
-define('JPATH_BASE', '../../');
-define('JPATH_TMP', JPATH_BASE.'tmp/');
-define('JPATH_SCAFFOLD', 'scaffold/');
+<?php 
 
-
-require_once(JPATH_BASE.'libraries/import.php');
-jimport('joomla.application.cli');
 jimport('joomla.factory');
 jimport('joomla.filesystem.file');
 jimport('joomla.filesystem.folder');
@@ -17,179 +10,153 @@ jimport('joomla.application.component.helper');
 jimport('joomla.application.module.helper');
 jimport('joomla.environment.request');
 
-require_once(JPATH_BASE.'includes/defines.php'); 
-require_once(JPATH_BASE.'includes/framework.php');
-$mainframe =& JFactory::getApplication('site');
-$mainframe->initialise();
+require_once('module.php');
+require_once('component.php');
+require_once('plugin.php');   
 
-class JBuilder extends JCli {
+class JBuilder {
     
-    public $type;
-    public $modName;
-    public $author;
-    public $creationDate;
-    public $copyright;
-    public $license;
-    public $authorEmail;
-    public $authorUrl;
-    public $version;
-    public $description;
-    public $helpKey;
+    private $extName;
+    private $className;
+    private $extType;
+    private $extPrefix;
+    private $extInstall;
+    private $scaffoldPath;
+    private $manifestPath;
+    private $manifestFields;
+    private $manifest;
+    private $filesArray = array();
+    private $cli;
+    private $prefixes = array(
+        'component' => 'com',
+        'module'    => 'mod',
+        'plugin'    => ''
+    );
     
-    private $zipFiles = array();
-    
-    public function execute() {
+    public function __construct($name, $type, $install = false) {
+        if(empty($name) || empty($type)) 
+            return false;
         
-        $this->out('Hello. What do you want to build today:'."\n".'1 - Component; 2 - Plugin; 3 - Module');
-        $choice = $this->in();
-        
-        switch($choice) {
-            case 1:
-            case 2:
-                $this->out('Sorry but we can offer you only Modules :)'); 
-                $this->type = 'mod';
-                break;
-            case 3: 
-            default:
-                $this->type = 'mod';
+        if(empty($this->extName)) {
+            $this->extName = $name;
         }
-
-        $this->buildModule();
+        
+        if(empty($this->className)) {
+            $this->className = ucfirst($name);
+        }
+        
+        if(empty($this->extType)) {
+            $this->extType = $type;
+        }
+        
+        if(empty($this->extPrefix) && !empty($this->prefixes[$this->extType])) {
+            $this->extPrefix = $this->prefixes[$this->extType].'_';
+        }
+        
+        if($this->extInstall == null) {
+            $this->extInstall = (bool)$install;
+        }
+        
+        if(empty($this->cli)) {
+            $this->cli = JCli::getInstance();
+        }
+        
+        $this->scaffoldPath = dirname(__FILE__).'/scaffold';
     }
     
-    protected function buildModule() {
-        // There is a bug if you pass a true as 
-        // a second parameter it returns the carriage-return 
-        // (#xD) character as part of the folowing input
-        $this->out('Enter a module name:');
-        // Make the module name safe for directories
-        $this->modName = JFile::makeSafe($this->in());
+    public function build() { 
+        $manifest = &$this->getManifestFile();
+        $this->setManifestFile($manifest);
         
-        $this->out('Author:');
-        $this->author = $this->in();
-
-        $this->out('Enter creation date:');
-        $this->creationDate = $this->in();
+        $this->createDirectoryStructure($this->extType);
+        $this->setFilesArray($this->scaffoldPath.'/'.$this->extType);
+        $this->moveFiles();
+        $result = $this->createZipArchive();
         
-        $this->out('Copyright:');
-        $this->copyright = $this->in();
+        if($this->extInstall) {
+            $this->installPackage();
+        }
         
-        $this->out('License:');
-        $this->license = $this->in();
-        
-        $this->out('Author email:');
-        $this->authorEmail = $this->in();    
-        
-        $this->out('Author URL:');
-        $this->authorUrl = $this->in();
-        
-        $this->out('Module version:');
-        $this->version = $this->in();
-        
-        $this->out('Module description:');
-        $this->description = $this->in();
-        
-        $this->out('Help url:');
-        $this->helpKey = $this->in();
-        
-        $this->createDirectoryStructure();
-        
-        $this->createZipArchive();
-        
-        $this->installPackage();
+        if($result) {
+            JFolder::delete(JPATH_TMP.'mod_'.$this->extName);
+        }
     }
     
-    protected function getXMLContents() {
-        $extension = new SimpleXMLElement('<extension></extension>');        
-        $extension->addAttribute('type', 'module');
-        $extension->addAttribute('version', '1.7');
-        $extension->addAttribute('client', 'site');
-        $extension->addAttribute('method', 'upgrade');
-            $extension->addChild('name', 'mod_'.$this->modName);
-            $extension->addChild('author', $this->author);
-            
-            $extension->addChild('creationDate', $this->creationDate);
-            $extension->addChild('copyright', $this->copyright);
-            $extension->addChild('license', $this->license);
-            $extension->addChild('authorEmail', $this->authorEmail);
-            $extension->addChild('authorUrl', $this->authorUrl);
-            $extension->addChild('version', $this->version);
-            $extension->addChild('description', $this->description);
-            
-            $files = $extension->addChild('files');
-                $files->addChild('filename', 'mod_'.$this->modName.'.php')
-                      ->addAttribute('module', 'mod_'.$this->modName);
-                $files->addChild('folder', 'tmpl');
-                $files->addChild('folder', 'fields');
-                $files->addChild('filename', 'helper.php');
-                $files->addChild('filename', 'index.html');
-                $files->addChild('filename', 'mod_'.$this->modName.'.xml');
-            $languages = $extension->addChild('languages');
-                $languages->addChild('language', 'en-GB.mod_'.$this->modName.'.ini')
-                          ->addAttribute('tag', 'en-GB');
-                $languages->addChild('language', 'en-GB.mod_'.$this->modName.'.sys.ini')
-                          ->addAttribute('tag', 'en-GB');
-            $help = $extension->addChild('help')->addAttribute('key', $this->helpKey);
-            $config = $extension->addChild('config');
-                $fields = $config->addChild('fields');
-                $fields->addAttribute('name', 'params');
-                    $fieldset = $fields->addChild('fieldset');
-                    $fieldset->addAttribute('name', 'basic');
-                    $fieldset->addAttribute('addfieldpath', '/modules/mod_'.$this->modName.'/fields');
+    public function getManifestFile() {
+        if(!empty($this->manifest))
+            return $this->manifest;
         
-        // Ugly hack to format the XML file        
-        $dom = new DOMDocument('1.0');
-        $dom->preserveWhiteSpace = false;
-        $dom->formatOutput = true;
-        $dom->loadXML($extension->asXML());
-        return $dom->saveXML();
+        $this->manifestPath = $this->scaffoldPath.'/'.$this->extType.'/'.$this->extPrefix.'default.xml';
+        if(!JFile::exists($this->manifestPath))
+            return false;
+        
+        return $this->manifest = new SimpleXMLElement(JFile::read($this->manifestPath));
     }
     
-    protected function createDirectoryStructure() {
-        $moduleDir = JPATH_TMP.'mod_'.$this->modName.'/';
-        JFolder::create($moduleDir);
-        JFolder::create($moduleDir.'tmpl');
-        JFolder::create($moduleDir.'fields');
+    function setManifestFile( &$xml, $parent = '' ) {
+        $parent .= '/'.$xml->getName();
+        $xml = array_shift($xml->xpath($parent));
+    
+        foreach($xml->attributes() as $attr => $val) {
+            $attrValue = (string)$xml->attributes()->{$attr};
+            if(empty($attrValue)) {
+                $this->cli->out('Enter a value for node\'s "'.$xml->getName().'" attribute "'.$attr.'"');
+                $xml->attributes()->{$attr} = $this->cli->in();
+            }
+        }
         
-        $moduleScaffold = JPATH_SCAFFOLD.'module/';
-        $indexFile = JFile::read($moduleScaffold.'mod_default.php');
-        $indexFile = str_replace('{module_name}', $this->modName, $indexFile);
-        JFile::write($moduleDir.'mod_'.$this->modName.'.php', $indexFile);
-        
-        $helperFile = JFile::read($moduleScaffold.'helper.php');
-        $helperFile = str_replace('{module_name}', $this->modName, $helperFile);
-        JFile::write($moduleDir.'helper.php', $helperFile);
-        
-        //$xmlFile = JFile::read(JPATH_SCAFFOLD.'/helper.php');
-        JFile::write($moduleDir.'mod_'.$this->modName.'.xml', $this->getXMLContents());
-        
-        JFile::copy($moduleScaffold.'index.html', $moduleDir.'index.html');
-        
-        JFile::copy($moduleScaffold.'tmpl/index.html', $moduleDir.'tmpl/index.html');
-        
-        JFile::copy($moduleScaffold.'tmpl/default.php', $moduleDir.'tmpl/default.php');
-        
-        JFile::copy($moduleScaffold.'fields/index.html', $moduleDir.'fields/index.html');
+        foreach($xml->children() as $node => $val) {
+            $nodeValue = (string)$xml->{$node};
+            if(empty($nodeValue)) {
+                $this->cli->out('Enter a value for node "'.(string)$node.'"');
+                $xml->{$node} = $this->cli->in();
+            }
+    
+            $this->setManifestFile($xml->{$node}, $parent);
+        }
     }
     
-    protected function createZipArchive( $archiveName='', $filesPath='mod_testmodel/', $files=array() ) {
+    protected function createZipArchive( $archiveName='', $filesPath='', $files=array() ) {
         
-        $archiveName = JPATH_TMP.'mod_'.$this->modName.'.zip';
+        $archiveName = JPATH_TMP.$this->extPrefix.$this->extName.'.zip';
+        JFolder::makeSafe($archiveName);
         if(JFile::exists($archiveName)) {
             return false;
         }
         
         $zipAdapter =& JArchive::getAdapter('zip');
-        
-        //$files = JFolder::files(JPATH_TMP.'/mod_'.$this->modName, '.', true);
-        $this->setFilesArray(JPATH_TMP.'mod_'.$this->modName);
-
-        $result = $zipAdapter->create($archiveName, $this->zipFiles);
+        $result = $zipAdapter->create($archiveName, $this->filesArray);
 
         return $result;
     }
     
+    protected function moveFiles() { 
+        foreach($this->filesArray as $file) {
+            $filePathFrom   = $this->scaffoldPath.'/'.$this->extType.'/'.$file['name'];
+            $filePathTo     = JPATH_TMP.$this->extPrefix.$this->extName.'/'.$file['name']; 
+            $res = JFile::copy($filePathFrom, $filePathTo);
+            
+            if($file['name'] == $this->extPrefix.$this->extName.'.xml') {
+                $contents = $this->manifest->asXML();
+            } else if($file['name'] == $this->extPrefix.$this->extName.'.php') {
+                $contents = JFile::read($this->scaffoldPath.'/'.$this->extType.'/'.$this->extPrefix.'default.php');
+            } else {
+                $contents = JFile::read($filePathFrom);
+            }
+            
+            preg_match_all('#\{\{([a-zA-Z0-9]*)\}\}#', $contents, $placeholders);
+            $placeholders = $placeholders[1];
+            foreach($placeholders as $val) {
+                if(!empty($this->{$val})) {
+                    $contents = str_replace('{{'.$val.'}}', $this->{$val}, $contents);
+                    JFile::write($filePathTo, $contents);
+                }
+            }
+        }
+    }
+    
     protected function setFilesArray( $dirPath, $subDir='' ) {
+        
         $files = JFolder::files($dirPath, '.', false, true);
         $dirs = JFolder::folders($dirPath);
         
@@ -197,37 +164,77 @@ class JBuilder extends JCli {
             $subDir .= '/';
         }
         
-        foreach($files as $k => $file) {
-            $this->zipFiles[] = array(
-                'name' => $subDir.JFile::getName($file),
-                'data' => JFile::read($file)
-            ); 
-        } 
+        if(!empty($files) && is_array($files)) {
+            foreach($files as $k => $file) {
+                $fileName = str_replace($this->extPrefix.'default', $this->extPrefix.$this->extName, JFile::getName($file));
+                $this->filesArray[] = array(
+                    'name' => $subDir.$fileName,
+                    'data' => JFile::read($file)
+                ); 
+            } 
+        }
         
-        if(!empty($dirs)) {
-            foreach($dirs as $dir) {
+        if(!empty($dirs) && is_array($dirs)) { 
+            foreach($dirs as $dir) { 
                 $this->setFilesArray($dirPath.'/'.$dir, $subDir.$dir);
             }
         }
         
     }
     
+    protected function createDirectoryStructure( $dirName, $subDir = '' ) {
+        $dirs = JFolder::folders($this->scaffoldPath.'/'.$dirName);
+        
+        if(!empty($dirs)) { 
+            foreach($dirs as $dir) {
+                $this->createDirectoryStructure($dirName.'/'.$dir, $subDir.'/'.$dir);
+            }
+        } else {
+            $extDir = JPATH_TMP.$this->extPrefix.$this->extName.'/'.$subDir; 
+            if(!JFolder::exists($extDir)) {
+                JFolder::create($extDir);
+            }
+        }
+    }
+    
     protected function installPackage() {
-        $packagePath = JPATH_TMP.'mod_'.$this->modName;
+        $packagePath = JPATH_TMP.$this->extPrefix.$this->extName;
         if(!JFolder::exists($packagePath)) {
             return false;
         }
-        
+
         $installer = new JInstaller();
         $result = $installer->install($packagePath);
-        
-        if($result) {
-            JFolder::delete($packagePath);
-        }
         
         return $result;
     }
     
+    public function setName( $name ) {
+        $this->extName = $name;
+    }
+    
+    public function getName() {
+        return $this->extName;
+    }
+    
+    public function getType() {
+        return $this->extType;
+    }
+    
+    public function getPrefix() {
+        return $this->extPrefix;
+    }
+    
+    private function setScaffoldPath( $path ) {
+        if(JFolder::exists($path)) {
+            $this->scaffoldPath = $path;
+        } else {
+            return false;
+        }
+    }
+    
+    public function getPath() {
+        return $this->scaffoldPath;
+    }
+    
 }
- 
-JCli::getInstance('JBuilder')->execute();

@@ -14,21 +14,21 @@
 	<version></version>
 	<description></description>
 	<files>
-		<filename module="mod_default">mod_default.php</filename>
+		<filename module="mod_{{extName}}">mod_{{extName}}.php</filename>
 		<folder>tmpl</folder>
         <folder>fields</folder>
 		<filename>helper.php</filename>
 		<filename>index.html</filename>
-		<filename>mod_banners.xml</filename>
+		<filename>mod_{{extName}}.xml</filename>
 	</files>
 	<languages>
-		<language tag="en-GB">en-GB.mod_default.ini</language>
-		<language tag="en-GB">en-GB.mod_default.sys.ini</language>
+		<language tag="en-GB">en-GB.mod_{{extName}}.ini</language>
+		<language tag="en-GB">en-GB.mod_{{extName}}.sys.ini</language>
 	</languages>
 	<help key="" />
 	<config>
 		<fields name="params">
-			<fieldset name="basic" addfieldpath="/modules/com_default/fields">
+			<fieldset name="basic" addfieldpath="/modules/mod_{{extName}}/fields">
 			</fieldset>
 		</fields>
 	</config>
